@@ -1,3 +1,2 @@
-openssl
-libffi-dev
 libsodium-dev
+libffi-dev
