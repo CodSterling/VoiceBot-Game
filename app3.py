@@ -307,7 +307,8 @@ async def on_voice_state_update(member, before, after):
 @bot.command(name="start")
 async def start(ctx):
     guild = ctx.guild
-    user_name = ctx.author.name.lower()
+    user = ctx.author
+    user_name = user.name.lower()
 
     # Check if the user already has a game text channel
     text_channel_name = f"game-text-{user_name}"
@@ -316,7 +317,6 @@ async def start(ctx):
     if not text_channel:
         # Create a new text channel
         text_channel = await guild.create_text_channel(text_channel_name)
-        await ctx.send(f"Your game text channel is ready: {text_channel.mention}")
 
     # Check if the user already has a game voice channel
     voice_channel_name = f"game-voice-{user_name}"
@@ -325,49 +325,47 @@ async def start(ctx):
     if not voice_channel:
         # Create a new voice channel
         voice_channel = await guild.create_voice_channel(voice_channel_name)
-        await ctx.send(f"Your game voice channel is ready: {voice_channel.mention}")
 
-    # Move user message to the new text channel
+    # Send message in the original command channel
+    await ctx.send(
+        f"{user.mention}, your game channels are ready!\n"
+        f"🔹 **Text Channel:** {text_channel.mention}\n"
+        f"🔹 **Voice Channel:** {voice_channel.mention}\n"
+        f"➡️ **Please go to {text_channel.mention} for game commands!**"
+    )
+
+    # Auto-connect the bot to the new voice channel
+    bot_vc = discord.utils.get(bot.voice_clients, guild=guild)
+
+    if bot_vc and bot_vc.channel != voice_channel:
+        await bot_vc.move_to(voice_channel)
+        await text_channel.send(f"The bot has moved to {voice_channel.mention}.")
+    elif not bot_vc:
+        vc = await voice_channel.connect()
+        assert isinstance(vc, discord.VoiceClient), "Failed to connect as a VoiceClient"
+
+        # Play starting audio if available
+        audio_file = audio_files.get("start")
+        if audio_file and os.path.exists(audio_file):
+            vc.play(discord.FFmpegPCMAudio(audio_file))
+        else:
+            await text_channel.send("Starting audio not found or cannot be played.")
+
+    # "Move" the user to the new text channel by tagging them and deleting the original message
     try:
-        await ctx.message.delete()  # Delete original message
+        await ctx.message.delete()  # Delete the original message
     except discord.Forbidden:
-        pass  # Bot lacks permission to delete messages
+        pass  # If the bot lacks permission to delete messages
 
-    await text_channel.send(f"{ctx.author.mention}, your game session has started here!")
+    await text_channel.send(f"{user.mention}, your game session has started here! Use this channel for all game-related commands.")
 
     # Call `get_command_menu` in the user's new text channel
     command_menu = bot.get_command("get_command_menu")
     if command_menu:
-        await command_menu.callback(ctx)
+        new_ctx = await bot.get_context(await text_channel.send(f"Loading game menu for {user.mention}..."))
+        await command_menu.callback(new_ctx)
     else:
         await text_channel.send("Command menu not found.")
-
-    # Check if the bot is already connected to a voice channel
-    bot_vc = discord.utils.get(bot.voice_clients, guild=guild)
-
-    if bot_vc:
-        # Move bot to user's voice channel if necessary
-        if ctx.author.voice and ctx.author.voice.channel:
-            if bot_vc.channel.id != ctx.author.voice.channel.id:
-                await bot_vc.move_to(ctx.author.voice.channel)
-                await text_channel.send("The bot has moved to your voice channel.")
-        else:
-            await text_channel.send("The bot is already connected to your voice channel!")
-    else:
-        # Connect the bot to the user's voice channel
-        if ctx.author.voice and ctx.author.voice.channel:
-            vc = await ctx.author.voice.channel.connect()
-            assert isinstance(vc, discord.VoiceClient), "Failed to connect as a VoiceClient"
-
-            # Play starting audio if available
-            audio_file = audio_files.get("start")
-            if audio_file and os.path.exists(audio_file):
-                vc.play(discord.FFmpegPCMAudio(audio_file))
-            else:
-                await text_channel.send("Starting audio not found or cannot be played.")
-        else:
-            await text_channel.send("You need to join a voice channel to start the game!")
-
 
 
 # The .menu command
