@@ -327,17 +327,32 @@ async def start(ctx):
         voice_channel = await guild.create_voice_channel(voice_channel_name)
         await ctx.send(f"Your game voice channel is ready: {voice_channel.mention}")
 
+    # Move user message to the new text channel
+    try:
+        await ctx.message.delete()  # Delete original message
+    except discord.Forbidden:
+        pass  # Bot lacks permission to delete messages
+
+    await text_channel.send(f"{ctx.author.mention}, your game session has started here!")
+
+    # Call `get_command_menu` in the user's new text channel
+    command_menu = bot.get_command("get_command_menu")
+    if command_menu:
+        await command_menu.callback(ctx)
+    else:
+        await text_channel.send("Command menu not found.")
+
     # Check if the bot is already connected to a voice channel
     bot_vc = discord.utils.get(bot.voice_clients, guild=guild)
 
     if bot_vc:
-        # If the bot is connected, move to the user's voice channel if necessary
+        # Move bot to user's voice channel if necessary
         if ctx.author.voice and ctx.author.voice.channel:
             if bot_vc.channel.id != ctx.author.voice.channel.id:
                 await bot_vc.move_to(ctx.author.voice.channel)
-                await ctx.send("The bot has moved to your voice channel.")
+                await text_channel.send("The bot has moved to your voice channel.")
         else:
-            await ctx.send("The bot is already connected to your voice channel!")
+            await text_channel.send("The bot is already connected to your voice channel!")
     else:
         # Connect the bot to the user's voice channel
         if ctx.author.voice and ctx.author.voice.channel:
@@ -349,11 +364,9 @@ async def start(ctx):
             if audio_file and os.path.exists(audio_file):
                 vc.play(discord.FFmpegPCMAudio(audio_file))
             else:
-                await ctx.send("Starting audio not found or cannot be played.")
+                await text_channel.send("Starting audio not found or cannot be played.")
         else:
-            await ctx.send("You need to join a voice channel to start the game!")
-
-
+            await text_channel.send("You need to join a voice channel to start the game!")
 
 
 
