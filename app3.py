@@ -360,7 +360,7 @@ async def start(ctx):
     await text_channel.send(f"{user.mention}, your game session has started here! Use this channel for all game-related commands.")
 
     # Call `get_command_menu` in the user's new text channel
-    command_menu = bot.get_command("get_command_menu")
+    command_menu = bot.get_command("menu")
     if command_menu:
         new_ctx = await bot.get_context(await text_channel.send(f"Loading game menu for {user.mention}..."))
         await command_menu.callback(new_ctx)
@@ -675,7 +675,7 @@ async def open_sesame(ctx):
             await ctx.send("🚪 The image for the final door could not be found. Please check the file path.")
 
         # Add a link to the specific channel
-        special_channel = ctx.guild.get_channel(1332802606237487157)
+        special_channel = ctx.guild.get_channel(1336175463877578762)
         if special_channel:
             embed.add_field(
                 name="🎉 Special Channel",
@@ -745,7 +745,7 @@ async def unlock_door(ctx):
         save_inventories(player_inventories)  # Save the updated inventory
 
         # Fetch the special channel
-        special_channel = ctx.guild.get_channel(1332592958012133436)
+        special_channel = ctx.guild.get_channel(1336175530398978118)
 
         # Create an embed for the special door
         embed = discord.Embed(
